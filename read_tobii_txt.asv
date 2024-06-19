@@ -24,7 +24,7 @@ for itrial = trial_inds'
   data.time{itrial} = time(1:length(data.trial{itrial}));
 end
 
-% only keep trials with data in them
+% only kee
 nchan = numel(data.label);
 validtrials = cellfun(@(x) size(x,2) > nchan, data.trial);
 data.trial = data.trial(validtrials);
@@ -35,7 +35,7 @@ data = ft_checkdata(data, 'datatype', {'raw'}, 'feedback', 'yes', 'hassampleinfo
 
 % Artifact rejection: interpolate blinks and spikes
 movement = [];
-for itrial = 1:length(data.trial)
+for itrial = trial_inds'
   pkdat = data.trial{itrial}(8,:); %8= right pupil, p > 0.15 has the peaks
   pkdat = abs(pkdat-mean(pkdat));
   [~,peakinds,peakwidth,proms] = findpeaks(pkdat); 

@@ -11,7 +11,8 @@ cd(datapath)
 % this section loads in the data and does some basic preprocessing. See% https://www.fieldtriptoolbox.org/tutorial/continuous/ for more info
 
 % data = read_tobii_txt(fullfile(datapath, 'G643402_Arousing_Eyecatchers_Session2_2024-06-10_14h47.06.152.txt')); % replace txt with your own data file
-data = read_tobii_txt(fullfile(datapath, 'F567226_Arousing_Eyecatchers_Session2_2024-06-10_14h05.43.046-1.txt')); % replace txt with your own data file
+% data = read_tobii_txt(fullfile(datapath, 'F567226_Arousing_Eyecatchers_Session2_2024-06-10_14h05.43.046-1.txt')); % replace txt with your own data file
+data = read_tobii_txt(fullfile(datapath, 'E304683_Arousing_Eyecatchers_Session2_2024-06-10_13h18.36.786-1.txt')); % replace txt with your own data file
 
 % Now you should have a structure called "data" in your workspace
 
