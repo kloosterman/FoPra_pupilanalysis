@@ -1,5 +1,5 @@
 %% Example script for pupil analysis
-restoredefaultpath; clear; % this clears the path
+restoredefaultpath % this clears the path
 addpath('/Users/kloosterman/Documents/MATLAB/fieldtrip-20240603') % add fieldtrip to path, download from https://download.fieldtriptoolbox.org/
 ft_defaults % this sets up fieldtrip toolbox for use, see https://www.fieldtriptoolbox.org/faq/installation/
 addpath('/Users/kloosterman/Library/CloudStorage/Dropbox/PROJECTS/Teaching/23-24SS/FoPra_pupil/FoPra_pupilanalysis') % the read_tobii_txt should be in this path
@@ -10,13 +10,12 @@ cd(datapath)
 %% preprocessing eye tracking data: reading txt file into memory 
 % this section loads in the data and does some basic preprocessing. See% https://www.fieldtriptoolbox.org/tutorial/continuous/ for more info
 
-% data = read_tobii_txt(fullfile(datapath, 'G643402_Arousing_Eyecatchers_Session2_2024-06-10_14h47.06.152.txt')); % replace txt with your own data file
-data = read_tobii_txt(fullfile(datapath, 'F567226_Arousing_Eyecatchers_Session2_2024-06-10_14h05.43.046-1.txt')); % replace txt with your own data file
+data = read_tobii_txt(fullfile(datapath, 'G643402_Arousing_Eyecatchers_Session2_2024-06-10_14h47.06.152.txt')); % replace txt with your own data file
 
 % Now you should have a structure called "data" in your workspace
 
 %% save the data to file
-save( fullfile(datapath, 'Proband1.mat'), 'data')  % this saves variable "data" into file Proband1.mat 
+save( data/Proband1.mat data  % this saves variable "data" into file Proband1.mat 
 
 %% in the datafile the RIGHT pupil channel contains plausible pupil data. To visualize this, do the following:
 % see https://www.fieldtriptoolbox.org/faq/how_can_i_use_the_databrowser/ for more info
