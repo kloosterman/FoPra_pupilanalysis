@@ -8,35 +8,53 @@ t = readtable(inputfile);
 
 % Prepare the ft data struct
 data = [];
-data.label = t.Properties.VariableNames;
+% data.label = [t.Properties.VariableNames 'pupil'];
+% data.label = {'TRIAL_INDEX', 'time', 'gaze_x', 'gaze_y', 'pupil'}; % 5 chans
+data.label = {'TRIAL_INDEX'; 'time'; 'pupil'}; % 3 chans
 data.trial = {};
 data.time = {};
 data.fsample = 40; % 120 Hz, pupil sampled every 3rd sample, so effectively 40 Hz
+data.trialinfo = [];
 time = 0:1/data.fsample:100; % 100 s time axis, used for making single trial time axes
 
 trial_inds = unique(t.TRIAL_INDEX);
 % go through all the trials and put them in data
 for itrial = trial_inds'
   curtrl = t(t.TRIAL_INDEX == itrial,:);
-  smp = not(ismissing(curtrl.left_pupil_measure1)) & not(ismissing(curtrl.left_gaze_x)); % only keep samples with pupil measurement
-  curtrl = curtrl(smp,:); 
-  data.trial{itrial} = table2array(curtrl)';  
-  data.time{itrial} = time(1:length(data.trial{itrial}));
+  smp = not(ismissing(curtrl.left_pupil_measure1)) | not(ismissing(curtrl.right_pupil_measure1)); % only keep samples with pupil measurement
+  curtrl = curtrl(smp,:);
+  if isempty(curtrl);    continue;  end
+  % curtrl.gaze_x = nanmean([curtrl.left_pupil_measure1 curtrl.right_pupil_measure1],2); % good idea if one chan has bad data?  
+  % curtrl.gaze_y = nanmean([curtrl.left_pupil_measure1 curtrl.right_pupil_measure1],2); % good idea if one chan has bad data?  
+  curtrl.pupil = nanmean([curtrl.left_pupil_measure1 curtrl.right_pupil_measure1],2); % good idea if one chan has bad data?  
+  if any(ismissing(curtrl(1,:)))
+    curtrl(1,:) = nanmean(curtrl); % to avoid a nan at the start
+  end
+  if any(ismissing(curtrl(end,:)))
+    curtrl(end,:) = nanmean(curtrl); % to avoid a nan at the end
+  end
+  data.trial{end+1} = [curtrl.TRIAL_INDEX curtrl.time curtrl.pupil]';  
+  data.time{end+1} = time(1:length(data.trial{end}));
+  data.trialinfo(end+1,1) = curtrl.TRIAL_INDEX(1,:);
 end
 
-% only keep trials with data in them
+% only keep trials with more samples than channels
 nchan = numel(data.label);
 validtrials = cellfun(@(x) size(x,2) > nchan, data.trial);
 data.trial = data.trial(validtrials);
 data.time = data.time(validtrials);
+data.trialinfo = data.trialinfo(validtrials);
 
+if isempty(data.trial)
+  return
+end
 % check if fieldtrip approves the data and add sampleinfo
 data = ft_checkdata(data, 'datatype', {'raw'}, 'feedback', 'yes', 'hassampleinfo', 'yes');
 
 % Artifact rejection: interpolate blinks and spikes
 movement = [];
 for itrial = 1:length(data.trial)
-  pkdat = data.trial{itrial}(8,:); %8= right pupil, p > 0.15 has the peaks
+  pkdat = data.trial{itrial}(3,:); 
   pkdat = abs(pkdat-mean(pkdat));
   [~,peakinds,peakwidth,proms] = findpeaks(pkdat); 
   pkthresh = 0.15;
@@ -69,7 +87,7 @@ data = ft_rejectartifact(cfg, data);
 cfg=[];
 cfg.prewindow = 1./data.fsample;
 cfg.postwindow = 1./data.fsample;
-data = ft_interpolatenan(cfg, data); 
+data = ft_interpolatenan(cfg, data); % what if a channel only has nans?
 
 % plotting again
 % cfg = [];
@@ -78,8 +96,8 @@ data = ft_interpolatenan(cfg, data);
 % cfg.demean = 'yes'; % this makes the data zero-centered 
 % cfg = ft_databrowser(cfg, data); 
 
-% low pass filter to smooth the data
-cfg=[];
-cfg.lpfilter = 'yes';
-cfg.lpfreq = 10;
-data = ft_preprocessing(cfg, data);
+% % low pass filter to smooth the data
+% cfg=[];
+% cfg.lpfilter = 'yes';
+% cfg.lpfreq = 10;
+% data = ft_preprocessing(cfg, data);

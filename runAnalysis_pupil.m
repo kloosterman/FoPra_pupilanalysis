@@ -10,52 +10,48 @@ cd(datapath)
 %% preprocessing eye tracking data: reading txt file into memory 
 % this section loads in the data and does some basic preprocessing. See% https://www.fieldtriptoolbox.org/tutorial/continuous/ for more info
 
-% data = read_tobii_txt(fullfile(datapath, 'G643402_Arousing_Eyecatchers_Session2_2024-06-10_14h47.06.152.txt')); % replace txt with your own data file
-% data = read_tobii_txt(fullfile(datapath, 'F567226_Arousing_Eyecatchers_Session2_2024-06-10_14h05.43.046-1.txt')); % replace txt with your own data file
-data = read_tobii_txt(fullfile(datapath, 'E304683_Arousing_Eyecatchers_Session2_2024-06-10_13h18.36.786-1.txt')); % replace txt with your own data file
+% put filename of the txt files that are in your datapath here, without .txt extension
+SUBJ = {'VP01' 'VP02' 'VP03' 'VP04' 'VP05' 'VP07' 'VP08' 'VP11' 'VP12' 'VP13' 'VP14' 'VP15' 'VP16' 'VP17' 'VP18' 'VP20' 'VP23' 'VP25' };
 
-% Now you should have a structure called "data" in your workspace
+data = []; timelock_trials=[]; timelock = [];
+for isub = 1:length(SUBJ)
+  data = read_tobii_txt(fullfile(datapath, [SUBJ{isub} '.txt'])); % read txt files one by one
+  cfg=[]; cfg.keeptrials = 'yes';
+  timelock_trials{end+1} = ft_timelockanalysis(cfg, data); % collect single trials of subjects in timelock_trials
 
-%% save the data to file
-save( fullfile(datapath, 'Proband1.mat'), 'data')  % this saves variable "data" into file Proband1.mat 
+  cfg=[]; cfg.keeptrials = 'no';
+  timelock{end+1} = ft_timelockanalysis(cfg, data); % collect average over trials for each subject in timelock
+end
 
-%% in the datafile the RIGHT pupil channel contains plausible pupil data. To visualize this, do the following:
-% see https://www.fieldtriptoolbox.org/faq/how_can_i_use_the_databrowser/ for more info
 cfg=[];
-cfg.channel =  'right_pupil_measure1';
-cfg.demean = 'yes'; % this makes the data zero-centered 
-cfg = ft_databrowser(cfg, data); % click through the trials
-
-%% plot average pupil, to see if we have a pupil dilation/constriction
-% average over trials
+cfg.keepindividual = 'no';
+timelock_avg=ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
 cfg=[];
-cfg.channel = 'right_pupil_measure1';
-timelock = ft_timelockanalysis(cfg, data);
+cfg.keepindividual = 'yes';
+timelock=ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
 
-% plot the trial average
+%% save the processed data to file
+save( fullfile(datapath, 'singletrials.mat'), 'timelock_trials')  
+save( fullfile(datapath, 'trialaverage.mat'), 'timelock')  
+save( fullfile(datapath, 'subjectaverage.mat'), 'timelock_avg')  
+
+%% plot the average over subjects
 cfg=[];
 cfg.xlim = [0 1.5];
+cfg.channel = 'pupil';
 ft_singleplotER(cfg, timelock) 
 xlabel('Time (s)')
 ylabel('Pupil size')
 saveas(gcf, 'PupilResponse.png') % save to a figure
 
-%% get single trial pupil response prestim (assuming the first 0.5 s are prestim)
-% select pupil and put single trials in matrix
+%% select 0-0.5 s interval and average within that interval for each subject and for each trial
 cfg=[];
-cfg.keeptrials = 'yes';
-cfg.channel = 'right_pupil_measure1';
-timelock = ft_timelockanalysis(cfg, data); 
-
-% select 0-0.5 s interval and average within that interval
-cfg=[];
-cfg.latency = [0. 0.5];
+cfg.channel = 'pupil';
+cfg.latency = [0 0.5];
 cfg.avgovertime = 'yes';
-prestimpupil = ft_selectdata(cfg, timelock); 
-
-% plot the single trial values in a histogram to see distribution
-figure; histogram(prestimpupil.trial)
-title('Histogram of single-trial pupil size between 0 and 0.5 s')
-xlabel('Pupil size (arbitrary units)')
-ylabel('Frequency of occurrence')
-saveas(gcf, 'SingleTrialPupil.png') % save to a figure
+prestimpupil = [];
+for isub = 1:length(timelock_trials)
+  prestimpupil{end+1} = ft_selectdata(cfg, timelock_trials{isub});
+end
+% prestimpupil.trial now has the single trial values per subject, e.g.
+% prestimpupil{1}.trial for the first subject
