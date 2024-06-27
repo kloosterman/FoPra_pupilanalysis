@@ -79,7 +79,7 @@ for isub = 1:length(timelock_trials)
   timelock_trials{isub} = ft_selectdata(cfg, timelock_trials{isub});
 
   conds = {'Alltrials' 'Freude' 'Notfreude'};
-  for iemo = 1:3
+  for iemo = 1%:3
     trialinfo = timelock_trials{isub}.trialinfo;
     if iemo == 2
       trialinfo = trialinfo(trialinfo.emotion == "Freude",:);
@@ -94,6 +94,7 @@ for isub = 1:length(timelock_trials)
       out_accuracy(isub,ibin) = mean(trialinfo.correct(trialinfo.pupilbin == ibin));
       out_rt(isub,ibin) = mean(trialinfo.rt(trialinfo.pupilbin == ibin));
       writematrix(out_accuracy, ['Accuracy_pupilbinned' conds{iemo}])
+      writematrix(out_rt, ['rt_pupilbinned' conds{iemo}])
     end
   end
 end
