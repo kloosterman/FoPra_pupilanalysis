@@ -29,7 +29,7 @@ for isub = 1:length(SUBJ)
     end
     data.trialinfo.correct(itrial,1) = behav.Antwortcorrect(trlind,1);
     data.trialinfo.rt(itrial,1) = behav.Antwort__rt(trlind,1);
-    data.trialinfo.emotion(itrial,1) = behav.Emotion(trlind,1);
+    data.trialinfo.emotion(itrial,1) = string(behav.Emotion{trlind,1});
     % data.trialinfo.rt = behav.Antwort__rt;
     % data.trialinfo.emotion = behav.Emotion;
   end
@@ -65,21 +65,22 @@ saveas(gcf, 'PupilResponse.png') % save to a figure
 
 %% select 0-0.5 s interval and average within that interval for each subject and for each trial
 nbins = 5;
-for isub = 1:length(timelock_trials)
-  cfg=[];
-  cfg.channel = 'pupil';
-  cfg.latency = [2 3];
-  cfg.avgovertime = 'yes';
-  cfg.nanmean = 'yes';
-  prestimpupil = ft_selectdata(cfg, timelock_trials{isub});
-  timelock_trials{isub}.trialinfo.prestimpupil = prestimpupil.trial;
-  cfg = [];
-  cfg.trials = not(isnan(timelock_trials{isub}.trialinfo.prestimpupil)) & ... % remove trials without pupil data
-    not(isnan(timelock_trials{isub}.trialinfo.rt)); % remove trials without RT data
-  timelock_trials{isub} = ft_selectdata(cfg, timelock_trials{isub});
+conds = {'Alltrials' 'Freude' 'Notfreude'};
+out_accuracy=[]; out_rt=[];
+for iemo = 1:3
+  for isub = 1:length(timelock_trials)
+    cfg=[];
+    cfg.channel = 'pupil';
+    cfg.latency = [2 3];
+    cfg.avgovertime = 'yes';
+    cfg.nanmean = 'yes';
+    prestimpupil = ft_selectdata(cfg, timelock_trials{isub});
+    timelock_trials{isub}.trialinfo.prestimpupil = prestimpupil.trial;
+    cfg = [];
+    cfg.trials = not(isnan(timelock_trials{isub}.trialinfo.prestimpupil)) & ... % remove trials without pupil data
+      not(isnan(timelock_trials{isub}.trialinfo.rt)); % remove trials without RT data
+    timelock_trials{isub} = ft_selectdata(cfg, timelock_trials{isub});
 
-  conds = {'Alltrials' 'Freude' 'Notfreude'};
-  for iemo = 1%:3
     trialinfo = timelock_trials{isub}.trialinfo;
     if iemo == 2
       trialinfo = trialinfo(trialinfo.emotion == "Freude",:);
@@ -99,8 +100,8 @@ for isub = 1:length(timelock_trials)
   end
 end
 %% plot
-figure; subplot(2,2,1); plot(mean(out_accuracy)); title('Accuracy per bin')
-subplot(2,2,2); plot(mean(out_rt)); title('RT per bin')
+figure; subplot(2,2,1); plot(nanmean(out_accuracy)); title('Accuracy per bin')
+subplot(2,2,2); plot(nanmean(out_rt)); title('RT per bin')
 % prestimpupil.trial now has the single trial values per subject, e.g.
 % prestimpupil{1}.trial for the first subject
 
