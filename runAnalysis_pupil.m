@@ -28,7 +28,7 @@ cfg.keepindividual = 'no';
 timelock_avg=ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
 cfg=[];
 cfg.keepindividual = 'yes';
-timelock=ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
+timelock=ft_timelockgrandaverage(cfg, timelock{:}); % timelock has the single subjects
 
 %% save the processed data to file
 save( fullfile(datapath, 'singletrials.mat'), 'timelock_trials')  
@@ -55,3 +55,8 @@ for isub = 1:length(timelock_trials)
 end
 % prestimpupil.trial now has the single trial values per subject, e.g.
 % prestimpupil{1}.trial for the first subject
+
+cfg=[];
+cfg.keepindividual = 'yes';
+prestimpupil=ft_timelockgrandaverage(cfg, prestimpupil{:}); % timelock has the single subjects
+
