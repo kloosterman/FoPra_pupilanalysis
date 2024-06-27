@@ -89,6 +89,7 @@ cfg.prewindow = 1./data.fsample;
 cfg.postwindow = 1./data.fsample;
 data = ft_interpolatenan(cfg, data); % what if a channel only has nans?
 
+data.trialinfo = table(data.trialinfo, 'VariableNames', {'Trialno'});
 % plotting again
 % cfg = [];
 % cfg.artfctdef.blinks.artifact = movement(:,1:2);
