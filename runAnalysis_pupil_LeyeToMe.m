@@ -11,29 +11,38 @@ cd(datapath)
 % this section loads in the data and does some basic preprocessing. See% https://www.fieldtriptoolbox.org/tutorial/continuous/ for more info
 
 % put filename of the txt files that are in your datapath here, without .txt extension
-SUBJ = {'2' '3' '4' '5' '6' '7' '9' '10' '12' '14' '15' '16' '18' '19' '21' '22' '23' '24' '25' '26' };
+% '10' outlier, '12' '14' nans
+SUBJ = {'2' '3' '4' '5' '6' '7' '9'  '12' '14'  '15' '16' '18' '19' '21' '22' '23' '24' '25' '26' }; 
 
 data = []; timelock_trials=[]; timelock = [];
-for isub = 2 %1:length(SUBJ)
+for isub = 1:length(SUBJ)
   data = read_tobii_txt(fullfile(datapath, [SUBJ{isub} '_Pupille.txt'])); % read txt files one by one
   % add behav data
   behavfile = dir(fullfile(datapath, [SUBJ{isub} '_Verhaltensdaten.csv']));
   disp(behavfile)
   behav = readtable(fullfile(behavfile.folder, behavfile.name)); % read txt files one by one
-  behav = behav(behav.Trialindex > 0,:);
   for itrial = data.trialinfo.Trialno'
-    trlind = find(itrial == behav.Trialindex);
+    trlind = find(itrial == behav.Trial);
+    % trlind = itrial; % assume behav trials 1:100 match 1:100 pupil
     if isempty(trlind)
       warning ('trial not found');
       continue;
     end
-    data.trialinfo.correct(itrial,1) = behav.Antwortcorrect(trlind,1);
-    data.trialinfo.rt(itrial,1) = behav.Antwort__rt(trlind,1);
-    data.trialinfo.emotion(itrial,1) = string(behav.Emotion{trlind,1});
-    % data.trialinfo.rt = behav.Antwort__rt;
-    % data.trialinfo.emotion = behav.Emotion;
+    if itrial > size(behav,1)
+      warning('Fewer trials in behav than in pupil'); break
+    end
+    data.trialinfo.salience(itrial,1) = string(behav.Salienz{trlind,1});
+    data.trialinfo.lie(itrial,1) = string(behav.Abfrage_Luege{trlind,1});
   end
   data.trialinfo = data.trialinfo(data.trialinfo.Trialno > 0,:); % drop trials not in behavior
+  data.time = cellfun(@(x) x - 3, data.time, 'UniformOutput', false); % shift time axis 3 s
+  
+  % low pass filter to smoothen the data
+  cfg=[];
+  cfg.lpfilter = 'yes';
+  cfg.lpfreq = 3;
+  cfg.lpinstabilityfix = 'reduce'; %'split' (default  = 'no')
+  data = ft_preprocessing(cfg, data);
 
   cfg=[]; cfg.keeptrials = 'yes';
   timelock_trials{end+1} = ft_timelockanalysis(cfg, data); % collect single trials of subjects in timelock_trials
@@ -45,7 +54,7 @@ end
 cfg=[];
 cfg.keepindividual = 'no';
 timelock_avg=ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
-cfg=[];
+
 cfg.keepindividual = 'yes';
 timelock=ft_timelockgrandaverage(cfg, timelock{:}); % timelock has the single subjects
 
@@ -56,58 +65,90 @@ save( fullfile(datapath, 'subjectaverage.mat'), 'timelock_avg')
 
 %% plot the average over subjects
 cfg=[];
-cfg.xlim = [0 3];
+cfg.xlim = [-3 10];
 cfg.channel = 'pupil';
 ft_singleplotER(cfg, timelock)
 xlabel('Time (s)')
 ylabel('Pupil size')
 saveas(gcf, 'PupilResponse.png') % save to a figure
 
-%% select 0-0.5 s interval and average within that interval for each subject and for each trial
-nbins = 5;
-conds = {'Alltrials' 'Freude' 'Notfreude'};
-out_accuracy=[]; out_rt=[];
-for iemo = 1:3
-  for isub = 1:length(timelock_trials)
-    cfg=[];
-    cfg.channel = 'pupil';
-    cfg.latency = [2 3];
-    cfg.avgovertime = 'yes';
-    cfg.nanmean = 'yes';
-    prestimpupil = ft_selectdata(cfg, timelock_trials{isub});
-    timelock_trials{isub}.trialinfo.prestimpupil = prestimpupil.trial;
-    cfg = [];
-    cfg.trials = not(isnan(timelock_trials{isub}.trialinfo.prestimpupil)) & ... % remove trials without pupil data
-      not(isnan(timelock_trials{isub}.trialinfo.rt)); % remove trials without RT data
-    timelock_trials{isub} = ft_selectdata(cfg, timelock_trials{isub});
+%% average trials for each condition
+% sal = {'n' 's'}; % nonsalient salient
+% lie = {'j' 'f'}; % truth lie
+timelock_nonsal_truth = {}; timelock_nonsal_lie = {}; timelock_sal_truth = {}; timelock_sal_lie = {};
+for isub = 1:length(timelock_trials)
+  cfg=[];
+  cfg.avgoverrpt  = 'yes';
+  cfg.nanmean  = 'yes';
+  cfg.trials = timelock_trials{isub}.trialinfo.salience == "n" & timelock_trials{isub}.trialinfo.lie  == "j";
+  timelock_nonsal_truth{isub} = ft_timelockanalysis(cfg, timelock_trials{isub});
 
-    trialinfo = timelock_trials{isub}.trialinfo;
-    if iemo == 2
-      trialinfo = trialinfo(trialinfo.emotion == "Freude",:);
-    elseif iemo == 3
-      trialinfo = trialinfo(not(trialinfo.emotion == "Freude"),:);
-    end
-    ntrials = size(trialinfo,1);
-    trialinfo = sortrows(trialinfo, "prestimpupil");
-    [pupilbin, binedges] = discretize(1:ntrials, nbins);
-    trialinfo.pupilbin = pupilbin';
-    for ibin = 1:nbins
-      out_accuracy(isub,ibin) = mean(trialinfo.correct(trialinfo.pupilbin == ibin));
-      out_rt(isub,ibin) = mean(trialinfo.rt(trialinfo.pupilbin == ibin));
-      writematrix(out_accuracy, ['Accuracy_pupilbinned' conds{iemo}])
-      writematrix(out_rt, ['rt_pupilbinned' conds{iemo}])
-    end
-  end
+  cfg.trials = timelock_trials{isub}.trialinfo.salience == "n" & timelock_trials{isub}.trialinfo.lie  == "f";
+  timelock_nonsal_lie{isub} = ft_timelockanalysis(cfg, timelock_trials{isub});
+
+  cfg.trials = timelock_trials{isub}.trialinfo.salience == "s" & timelock_trials{isub}.trialinfo.lie  == "j";
+  timelock_sal_truth{isub} = ft_timelockanalysis(cfg, timelock_trials{isub});
+
+  cfg.trials = timelock_trials{isub}.trialinfo.salience == "s" & timelock_trials{isub}.trialinfo.lie  == "f";
+  timelock_sal_lie{isub} = ft_timelockanalysis(cfg, timelock_trials{isub});
 end
-%% plot
-figure; subplot(2,2,1); plot(nanmean(out_accuracy)); title('Accuracy per bin')
-subplot(2,2,2); plot(nanmean(out_rt)); title('RT per bin')
-% prestimpupil.trial now has the single trial values per subject, e.g.
-% prestimpupil{1}.trial for the first subject
+cfg=[];
+cfg.keepindividual = 'yes';
+timelock_nonsal_truth=ft_timelockgrandaverage(cfg, timelock_nonsal_truth{:}); % timelock has the single subjects
+timelock_nonsal_lie=ft_timelockgrandaverage(cfg, timelock_nonsal_lie{:}); % timelock has the single subjects
+timelock_sal_truth=ft_timelockgrandaverage(cfg, timelock_sal_truth{:}); % timelock has the single subjects
+timelock_sal_lie=ft_timelockgrandaverage(cfg, timelock_sal_lie{:}); % timelock has the single subjects
 
+%% average 4-8 s and export table
+cfg=[];
+cfg.avgovertime = 'yes';
+cfg.nanmean = 'yes';
+cfg.latency = [4 8];
+cfg.channel = 'pupil';
+timelock_nonsal_truth_sel=ft_selectdata(cfg, timelock_nonsal_truth); % timelock has the single subjects
+timelock_nonsal_lie_sel=ft_selectdata(cfg, timelock_nonsal_lie); % timelock has the single subjects
+timelock_sal_truth_sel=ft_selectdata(cfg, timelock_sal_truth); % timelock has the single subjects
+timelock_sal_lie_sel=ft_selectdata(cfg, timelock_sal_lie); % timelock has the single subjects
 
+t = table(string(SUBJ'), timelock_nonsal_truth_sel.individual, timelock_nonsal_lie_sel.individual, ...
+  timelock_sal_truth_sel.individual, timelock_sal_lie_sel.individual, ...
+  'VariableNames', {'subject#', 'nonsal_truth', 'nonsal_lie', 'sal_truth', 'sal_lie'});
+writetable(t, sprintf('Pupil_conditions_%d-%ds', cfg.latency))
 
+%% export table with time courses
+cfg=[];
+cfg.channel = 'pupil';
+timelock_nonsal_truth_sel=ft_timelockanalysis(cfg, timelock_nonsal_truth); % timelock has the single subjects
+timelock_nonsal_lie_sel=ft_timelockanalysis(cfg, timelock_nonsal_lie); % timelock has the single subjects
+timelock_sal_truth_sel=ft_timelockanalysis(cfg, timelock_sal_truth); % timelock has the single subjects
+timelock_sal_lie_sel=ft_timelockanalysis(cfg, timelock_sal_lie); % timelock has the single subjects
+
+t = table(timelock_nonsal_truth_sel.time', timelock_nonsal_truth_sel.avg', timelock_nonsal_lie_sel.avg', ...
+  timelock_sal_truth_sel.avg', timelock_sal_lie_sel.avg', ...
+  'VariableNames', {'time', 'nonsal_truth', 'nonsal_lie', 'sal_truth', 'sal_lie'});
+writetable(t, sprintf('Pupil_avg_timecourses'))
+
+%% baseline correct with mean for each subject
 % cfg=[];
-% cfg.keepindividual = 'yes';
-% prestimpupil=ft_timelockgrandaverage(cfg, prestimpupil{:}); % timelock has the single subjects
+% cfg.latency = [0 3];
+% cfg.avgovertime = 'yes';
+% baseline = ft_selectdata(cfg, timelock);
+% cfg=[];
+% cfg.operation = '(x1-x2)./x2*100';
+% cfg.parameter = 'individual';
+% timelock_nonsal_truth = ft_math(cfg, timelock_nonsal_truth, baseline);
+% timelock_nonsal_lie = ft_math(cfg, timelock_nonsal_lie, baseline);
+% timelock_sal_truth = ft_math(cfg, timelock_sal_truth, baseline);
+% timelock_nonsal_truth = ft_math(cfg, timelock_nonsal_truth, baseline);
+%% plot the average over subjects for each cond
+cfg=[];
+% cfg.xlim = [0 3];
+cfg.linewidth = 2;
+cfg.channel = 'pupil';
+ft_singleplotER(cfg, timelock_nonsal_lie, timelock_nonsal_truth, timelock_sal_lie, timelock_sal_truth)
+xlabel('Time (s)'); ylabel('Pupil size'); xline(0)
+leg = {'nonsal lie', 'nonsal truth', 'sal lie', 'sal truth'};
+legend(leg)
+saveas(gcf, 'PupilResponse.png') % save to a figure
+saveas(gcf, 'PupilResponse.pdf') % save to a figure
 

@@ -90,6 +90,7 @@ cfg.postwindow = 1./data.fsample;
 data = ft_interpolatenan(cfg, data); % what if a channel only has nans?
 
 data.trialinfo = table(data.trialinfo, 'VariableNames', {'Trialno'});
+
 % plotting again
 % cfg = [];
 % cfg.artfctdef.blinks.artifact = movement(:,1:2);
@@ -97,8 +98,3 @@ data.trialinfo = table(data.trialinfo, 'VariableNames', {'Trialno'});
 % cfg.demean = 'yes'; % this makes the data zero-centered 
 % cfg = ft_databrowser(cfg, data); 
 
-% % low pass filter to smooth the data
-% cfg=[];
-% cfg.lpfilter = 'yes';
-% cfg.lpfreq = 10;
-% data = ft_preprocessing(cfg, data);
