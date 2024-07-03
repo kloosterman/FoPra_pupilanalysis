@@ -14,7 +14,7 @@ cd(datapath)
 % '10' outlier, '12' '14' nans
 SUBJ = {'2' '3' '4' '5' '6' '7' '9'  '12' '14'  '15' '16' '18' '19' '21' '22' '23' '24' '25' '26' }; 
 
-data = []; timelock_trials=[]; timelock = [];
+data = []; timelock_trials=[]; timelock = []; timelock_bl = [];
 for isub = 1:length(SUBJ)
   data = read_tobii_txt(fullfile(datapath, [SUBJ{isub} '_Pupille.txt'])); % read txt files one by one
   % add behav data
@@ -40,7 +40,7 @@ for isub = 1:length(SUBJ)
   % low pass filter to smoothen the data
   cfg=[];
   cfg.lpfilter = 'yes';
-  cfg.lpfreq = 3;
+  cfg.lpfreq = 1;
   cfg.lpinstabilityfix = 'reduce'; %'split' (default  = 'no')
   data = ft_preprocessing(cfg, data);
 
@@ -49,6 +49,10 @@ for isub = 1:length(SUBJ)
 
   cfg=[]; cfg.keeptrials = 'no';
   timelock{end+1} = ft_timelockanalysis(cfg, data); % collect average over trials for each subject in timelock
+  
+  cfg=[];
+  cfg.baseline = [-2 0];  
+  timelock{end} = ft_timelockbaseline(cfg, timelock{end});
 end
 
 cfg=[];
@@ -91,6 +95,7 @@ for isub = 1:length(timelock_trials)
 
   cfg.trials = timelock_trials{isub}.trialinfo.salience == "s" & timelock_trials{isub}.trialinfo.lie  == "f";
   timelock_sal_lie{isub} = ft_timelockanalysis(cfg, timelock_trials{isub});
+  %baseline correction
 end
 cfg=[];
 cfg.keepindividual = 'yes';
@@ -99,22 +104,31 @@ timelock_nonsal_lie=ft_timelockgrandaverage(cfg, timelock_nonsal_lie{:}); % time
 timelock_sal_truth=ft_timelockgrandaverage(cfg, timelock_sal_truth{:}); % timelock has the single subjects
 timelock_sal_lie=ft_timelockgrandaverage(cfg, timelock_sal_lie{:}); % timelock has the single subjects
 
-%% average 4-8 s and export table
 cfg=[];
-cfg.avgovertime = 'yes';
-cfg.nanmean = 'yes';
-cfg.latency = [4 8];
-cfg.channel = 'pupil';
-timelock_nonsal_truth_sel=ft_selectdata(cfg, timelock_nonsal_truth); % timelock has the single subjects
-timelock_nonsal_lie_sel=ft_selectdata(cfg, timelock_nonsal_lie); % timelock has the single subjects
-timelock_sal_truth_sel=ft_selectdata(cfg, timelock_sal_truth); % timelock has the single subjects
-timelock_sal_lie_sel=ft_selectdata(cfg, timelock_sal_lie); % timelock has the single subjects
+cfg.baseline = [-2 0];
+timelock_nonsal_truth = ft_timelockbaseline(cfg, timelock_nonsal_truth);
+timelock_nonsal_lie = ft_timelockbaseline(cfg, timelock_nonsal_lie);
+timelock_sal_truth = ft_timelockbaseline(cfg, timelock_sal_truth);
+timelock_sal_lie = ft_timelockbaseline(cfg, timelock_sal_lie);
 
-t = table(string(SUBJ'), timelock_nonsal_truth_sel.individual, timelock_nonsal_lie_sel.individual, ...
-  timelock_sal_truth_sel.individual, timelock_sal_lie_sel.individual, ...
-  'VariableNames', {'subject#', 'nonsal_truth', 'nonsal_lie', 'sal_truth', 'sal_lie'});
-writetable(t, sprintf('Pupil_conditions_%d-%ds', cfg.latency))
+%% average 4-8 s and export table
+latencies = [1 4; 4 8];
+for ilat = 1:length(latencies)
+  cfg=[];
+  cfg.avgovertime = 'yes';
+  cfg.nanmean = 'yes';
+  cfg.latency = latencies(ilat,:);
+  cfg.channel = 'pupil';
+  timelock_nonsal_truth_sel=ft_selectdata(cfg, timelock_nonsal_truth); % timelock has the single subjects
+  timelock_nonsal_lie_sel=ft_selectdata(cfg, timelock_nonsal_lie); % timelock has the single subjects
+  timelock_sal_truth_sel=ft_selectdata(cfg, timelock_sal_truth); % timelock has the single subjects
+  timelock_sal_lie_sel=ft_selectdata(cfg, timelock_sal_lie); % timelock has the single subjects
 
+  t = table(string(SUBJ'), timelock_nonsal_truth_sel.individual, timelock_nonsal_lie_sel.individual, ...
+    timelock_sal_truth_sel.individual, timelock_sal_lie_sel.individual, ...
+    'VariableNames', {'subject#', 'nonsal_truth', 'nonsal_lie', 'sal_truth', 'sal_lie'});
+  writetable(t, sprintf('Pupil_conditions_%d-%ds', cfg.latency))
+end
 %% export table with time courses
 cfg=[];
 cfg.channel = 'pupil';

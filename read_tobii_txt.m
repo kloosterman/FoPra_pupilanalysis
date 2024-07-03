@@ -27,11 +27,11 @@ for itrial = trial_inds'
   % curtrl.gaze_x = nanmean([curtrl.left_pupil_measure1 curtrl.right_pupil_measure1],2); % good idea if one chan has bad data?  
   % curtrl.gaze_y = nanmean([curtrl.left_pupil_measure1 curtrl.right_pupil_measure1],2); % good idea if one chan has bad data?  
   curtrl.pupil = nanmean([curtrl.left_pupil_measure1 curtrl.right_pupil_measure1],2); % good idea if one chan has bad data?  
-  if any(ismissing(curtrl(1,:)))
-    curtrl(1,:) = nanmean(curtrl); % to avoid a nan at the start
+  if any(ismissing(curtrl.pupil(1,:)))
+    curtrl.pupil(1,:) = nanmean(head(curtrl.pupil, 20)); % to avoid a nan at the start
   end
   if any(ismissing(curtrl(end,:)))
-    curtrl(end,:) = nanmean(curtrl); % to avoid a nan at the end
+    curtrl.pupil(end,:) = nanmean(tail(curtrl.pupil, 20)); % to avoid a nan at the end
   end
   data.trial{end+1} = [curtrl.TRIAL_INDEX curtrl.time curtrl.pupil]';  
   data.time{end+1} = time(1:length(data.trial{end}));
