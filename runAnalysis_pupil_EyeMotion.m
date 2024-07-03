@@ -11,7 +11,8 @@ cd(datapath)
 % this section loads in the data and does some basic preprocessing. See% https://www.fieldtriptoolbox.org/tutorial/continuous/ for more info
 
 % put filename of the txt files that are in your datapath here, without .txt extension
-SUBJ = {'1' '2' '3' '5' '7' '8' '10' '12' '14' '16' '20' '21' '22' '23' '24' '27' '28' '29' '31' '32' '35' '36' '37' '38' '39' };
+SUBJ = {'1' '2' '3' '5' '7' '8' '10' '12' '14' '16' '20' '21' '22' '23' '24' '27' '28' '31' '32' '35' '36' '37' '38' '39' };
+% '29' is outlier
 
 data = []; timelock_trials=[]; timelock = [];
 for isub = 1:length(SUBJ)
@@ -30,8 +31,6 @@ for isub = 1:length(SUBJ)
     data.trialinfo.correct(itrial,1) = behav.Antwortcorrect(trlind,1);
     data.trialinfo.rt(itrial,1) = behav.Antwort__rt(trlind,1);
     data.trialinfo.emotion(itrial,1) = string(behav.Emotion{trlind,1});
-    % data.trialinfo.rt = behav.Antwort__rt;
-    % data.trialinfo.emotion = behav.Emotion;
   end
   data.trialinfo = data.trialinfo(data.trialinfo.Trialno > 0,:); % drop trials not in behavior
 
@@ -58,15 +57,16 @@ save( fullfile(datapath, 'subjectaverage.mat'), 'timelock_avg')
 cfg=[];
 cfg.xlim = [0 3];
 cfg.channel = 'pupil';
+cfg.linewidth = 2;
 ft_singleplotER(cfg, timelock)
 xlabel('Time (s)')
 ylabel('Pupil size')
-saveas(gcf, 'PupilResponse.png') % save to a figure
+saveas(gcf, 'PupilResponse.pdf') % save to a figure
 
-%% select 0-0.5 s interval and average within that interval for each subject and for each trial
+%% Bin accuracy based on pupil
 nbins = 5;
 conds = {'Alltrials' 'Freude' 'Notfreude'};
-out_accuracy=[]; out_rt=[];
+out_accuracy=[]; out_rt=[]; out_pupilperbin = [];
 for iemo = 1:3
   for isub = 1:length(timelock_trials)
     cfg=[];
@@ -94,10 +94,14 @@ for iemo = 1:3
     for ibin = 1:nbins
       out_accuracy(isub,ibin) = mean(trialinfo.correct(trialinfo.pupilbin == ibin));
       out_rt(isub,ibin) = mean(trialinfo.rt(trialinfo.pupilbin == ibin));
-      writematrix(out_accuracy, ['Accuracy_pupilbinned' conds{iemo}])
-      writematrix(out_rt, ['rt_pupilbinned' conds{iemo}])
+      out_pupilperbin(isub,ibin) = mean(trialinfo.prestimpupil(trialinfo.pupilbin == ibin)); 
     end
   end
+  t = table(string(SUBJ'), out_accuracy, out_rt, out_pupilperbin, ...
+    'VariableNames', {'subject#', 'accuracy', 'RT', 'Pupil size'})
+  writetable(t, sprintf('Pupil_binned_%s', conds{iemo}))
+  % writematrix(out_accuracy, ['Accuracy_pupilbinned' conds{iemo}])
+  % writematrix(out_rt, ['rt_pupilbinned' conds{iemo}])
 end
 %% plot
 figure; subplot(2,2,1); plot(nanmean(out_accuracy)); title('Accuracy per bin')
