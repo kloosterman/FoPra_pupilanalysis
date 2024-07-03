@@ -152,3 +152,6 @@ legend(leg)
 saveas(gcf, 'PupilResponse.png') % save to a figure
 saveas(gcf, 'PupilResponse.pdf') % save to a figure
 
+%% plot ohne ft
+figure; plot(t.time, [t.nonsal_lie t.nonsal_truth, t.sal_lie, t.sal_truth])
+[t.nonsal_lie t.nonsal_truth, t.sal_lie, t.sal_truth]
