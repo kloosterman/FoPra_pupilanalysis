@@ -12,7 +12,9 @@ cd(datapath)
 
 % put filename of the txt files that are in your datapath here, without .txt extension
 % '10' outlier, '12' '14' nans
-SUBJ = {'2' '3' '4' '5' '6' '7' '9'  '12' '14'  '15' '16' '18' '19' '21' '22' '23' '24' '25' '26' }; 
+% SUBJ = {'2' '3' '4' '5' '6' '7' '9'  '12' '14'  '15' '16' '18' '19' '21' '22' '23' '24' '25' '26' }; 
+SUBJ = {'2' '3' '4' '5' '6'  '9'  '12' '14'  '15' '16' '18'  '21' '22' '23' '24' '25' '26' }; 
+% SUBJ = {'5' };  %'5' has jump '19' '7'
 
 data = []; timelock_trials=[]; timelock = []; timelock_bl = [];
 for isub = 1:length(SUBJ)
@@ -50,14 +52,15 @@ for isub = 1:length(SUBJ)
   cfg=[]; cfg.keeptrials = 'no';
   timelock{end+1} = ft_timelockanalysis(cfg, data); % collect average over trials for each subject in timelock
   
-  cfg=[];
-  cfg.baseline = [-2 0];  
-  timelock{end} = ft_timelockbaseline(cfg, timelock{end});
+  % cfg=[];
+  % cfg.baseline = [-2 0];  
+  % timelock{end} = ft_timelockbaseline(cfg, timelock{end});
 end
 
 cfg=[];
 cfg.keepindividual = 'no';
-timelock_avg=ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
+cfg.tolerance = 0.01;
+timelock_avg = ft_timelockgrandaverage(cfg, timelock{:}); % timelock_avg has the average over all subjects
 
 cfg.keepindividual = 'yes';
 timelock=ft_timelockgrandaverage(cfg, timelock{:}); % timelock has the single subjects
@@ -84,6 +87,7 @@ for isub = 1:length(timelock_trials)
   cfg=[];
   cfg.avgoverrpt  = 'yes';
   cfg.nanmean  = 'yes';
+
   cfg.trials = timelock_trials{isub}.trialinfo.salience == "n" & timelock_trials{isub}.trialinfo.lie  == "j";
   timelock_nonsal_truth{isub} = ft_timelockanalysis(cfg, timelock_trials{isub});
 
@@ -99,18 +103,19 @@ for isub = 1:length(timelock_trials)
 end
 cfg=[];
 cfg.keepindividual = 'yes';
+cfg.tolerance = 0.01;
 timelock_nonsal_truth=ft_timelockgrandaverage(cfg, timelock_nonsal_truth{:}); % timelock has the single subjects
 timelock_nonsal_lie=ft_timelockgrandaverage(cfg, timelock_nonsal_lie{:}); % timelock has the single subjects
 timelock_sal_truth=ft_timelockgrandaverage(cfg, timelock_sal_truth{:}); % timelock has the single subjects
 timelock_sal_lie=ft_timelockgrandaverage(cfg, timelock_sal_lie{:}); % timelock has the single subjects
 
-cfg=[];
-cfg.baseline = [-2 0];
-timelock_nonsal_truth = ft_timelockbaseline(cfg, timelock_nonsal_truth);
-timelock_nonsal_lie = ft_timelockbaseline(cfg, timelock_nonsal_lie);
-timelock_sal_truth = ft_timelockbaseline(cfg, timelock_sal_truth);
-timelock_sal_lie = ft_timelockbaseline(cfg, timelock_sal_lie);
-
+% cfg=[];
+% cfg.baseline = [-2 0];
+% timelock_nonsal_truth = ft_timelockbaseline(cfg, timelock_nonsal_truth);
+% timelock_nonsal_lie = ft_timelockbaseline(cfg, timelock_nonsal_lie);
+% timelock_sal_truth = ft_timelockbaseline(cfg, timelock_sal_truth);
+% timelock_sal_lie = ft_timelockbaseline(cfg, timelock_sal_lie);
+% 
 %% average 4-8 s and export table
 latencies = [1 4; 4 8];
 for ilat = 1:length(latencies)
@@ -157,6 +162,7 @@ writetable(t, sprintf('Pupil_avg_timecourses'))
 %% plot the average over subjects for each cond
 cfg=[];
 % cfg.xlim = [0 3];
+cfg.xlim = [-3 10];
 cfg.linewidth = 2;
 cfg.channel = 'pupil';
 ft_singleplotER(cfg, timelock_nonsal_lie, timelock_nonsal_truth, timelock_sal_lie, timelock_sal_truth)
@@ -169,3 +175,8 @@ saveas(gcf, 'PupilResponse.pdf') % save to a figure
 %% plot ohne ft
 figure; plot(t.time, [t.nonsal_lie t.nonsal_truth, t.sal_lie, t.sal_truth])
 [t.nonsal_lie t.nonsal_truth, t.sal_lie, t.sal_truth]
+
+%% plot with SEM
+ydat = [squeeze(timelock_nonsal_lie.individual(:,3,:)) squeeze(timelock_nonsal_lie.individual(:,3,:))]
+figure;
+ft_plot_vector(timelock_nonsal_lie.time, ydat)
