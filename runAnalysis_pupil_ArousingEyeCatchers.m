@@ -4,7 +4,7 @@ addpath('/Users/kloosterman/Documents/MATLAB/fieldtrip-20240603') % add fieldtri
 ft_defaults % this sets up fieldtrip toolbox for use, see https://www.fieldtriptoolbox.org/faq/installation/
 addpath('/Users/kloosterman/Library/CloudStorage/Dropbox/PROJECTS/Teaching/23-24SS/FoPra_pupil/FoPra_pupilanalysis') % the read_tobii_txt should be in this path
 
-datapath = '/Users/kloosterman/Library/CloudStorage/Dropbox/PROJECTS/Teaching/23-24SS/FoPra_pupil/data'; % replace this path with your data path
+datapath = '/Users/kloosterman/Library/CloudStorage/Dropbox/PROJECTS/Teaching/23-24SS/FoPra_pupil/data/ArousingEyecatchers'; % replace this path with your data path
 cd(datapath)
 
 %% preprocessing eye tracking data: reading txt file into memory 
