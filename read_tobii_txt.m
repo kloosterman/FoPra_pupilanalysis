@@ -15,7 +15,7 @@ data.trial = {};
 data.time = {};
 data.fsample = 40; % 120 Hz, pupil sampled every 3rd sample, so effectively 40 Hz
 data.trialinfo = [];
-time = 0:1/data.fsample:100; % 100 s time axis, used for making single trial time axes
+time = 0:1/data.fsample:300; % 100 s time axis, used for making single trial time axes
 
 trial_inds = unique(t.TRIAL_INDEX);
 % go through all the trials and put them in data
