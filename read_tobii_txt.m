@@ -73,7 +73,7 @@ end
 % plot the artifacts in databrowser
 % cfg = [];
 % cfg.artfctdef.blinks.artifact = movement(:,1:2);
-% cfg.channel =  'right_pupil_measure1';
+% cfg.channel =  'pupil';
 % cfg.demean = 'yes'; % this makes the data zero-centered 
 % cfg = ft_databrowser(cfg, data); 
 
